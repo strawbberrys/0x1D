@@ -1,0 +1,60 @@
+[color=#bdc3c7][align=center][url=https://latte.to][img]https://media.discordapp.net/attachments/963102248211189760/1034589246159331328/latte-banner-dark-theme.png[/img][/url]
+
+[url=https://latte.to][img]https://media.discordapp.net/attachments/963102248211189760/998413188615913513/website-icon-white.png[/img][/url] [url=https://latte.to/invite][img]https://media.discordapp.net/attachments/963102248211189760/998413187101773885/discord-clyde-icon-white.png[/img][/url] [url=https://twitter.com/lattesoftworks][img]https://media.discordapp.net/attachments/963102248211189760/998413188339073174/twitter-icon-white.png[/img][/url] [url=https://github.com/latte-soft][img]https://media.discordapp.net/attachments/963102248211189760/998413187718324224/github-icon-white.png[/img][/url] [url=https://www.roblox.com/groups/10685936/Latte-Softworks#!/about][img]https://media.discordapp.net/attachments/963102248211189760/998413188020326562/roblox-icon-white.png[/img][/url]
+
+[hr]
+[size=x-large][b][url=https://latte.to/latte-soft/0x1D][color=#ecf0f1]GitHub Repository[/color][/url][/b][/size][/align]
+[hr]
+
+[size=x-large][b]Introduction[/b][/size]
+[sup][i]Documents & code snippets are licensed under the MIT License, see [url=https://github.com/latte-soft/0x1D/blob/master/LICENSE.txt]LICENSE.txt[/url] for more information.[/i]
+Written by [url=https://github.com/regginator]Reggie[/url] for [url=https://latte.to]Latte Softworks[/url][/sup]
+
+Hey, folks!
+In late August this year, I discovered something fairly [i]peculiar[/i] about the Roblox Binary Model Format (`rbxm`/`rbxl`) and a certain jump in `TypeId`s. (Each TypeId denotes a type of property in the binary format; e.g. `String`, `UDim`, `Vector3`, etc.. We'll learn more about this later.)
+We are leaking this RCE due to the fact that Roblox has put out a change in `sitetest2.robloxlabs`/`zintegration` that could prevent direct bytecode execution through this method in the future. We'll talk about this part later.. ;)
+
+I'll continue to refer to this binary format as the "`rbxm`" format, but I'ts the exact same as `rbxl`.
+
+For me to be able to properly explain all of this, you will need to take in and understand a few key aspects of the format relevant to this "vulnarability":
+[list]
+[*]There are a couple of fairly well-made documents containing decent previous community findings and documentation on the rbxm format, the best probably being in [url=https://dom.rojo.space/binary]the docs for rbx-dom[/url]. (Yes, the same team that made [url=https://rojo.space]Rojo[/url]) There are some minor issues with this doc such as the header signature being "`89 FF 0A 1A 0A`" (Hex), when it's actually `89 FF 0D 0A 1A 0A`.
+
+[*]Each rbxm file contains first a [url=https://dom.rojo.space/binary#file-header]file header[/url], and then a proceeding list of "[url=https://dom.rojo.space/binary#chunks]chunks[/url]". We're personally interested in the [url=https://dom.rojo.space/binary#prop-chunk]`PROP`[/url] and (more recently, undocumented) `SIGN` chunck.
+
+[*]Chunks themselves [b]can[/b] be compressed using either the [url=https://en.wikipedia.org/wiki/LZ4_(compression_algorithm)]LZ4[/url] compression algorithm, or, (just this week, also undocumented) the [url=https://github.com/facebook/zstd]"zstd"[/url] compression algorithm.
+You can see more about how chunks with compression work [url=https://dom.rojo.space/binary#chunks]here[/url].
+
+[*]All [url=https://dom.rojo.space/binary#prop-chunk]`PROP`[/url] chunks contain the Roblox property info itself, as-well as an enumerated 1-byte integer value we call the "`TypeId`". This TypeId references a very specific type of property in the format specifically so the serailizer can encode/decode each property. For example, `BaseScript.Source` is usually represented under the type id 1/0x01 (`String`). The first 4 bytes contain the specific length of bytes to read, the rest is the string itself. You can look at more examples [url=https://dom.rojo.space/binary#data-types]here[/url].
+
+[*]The `SIGN` chunk that was just recently added to Studio contains a "key"/hash of the file itself, used internally for loading "optimized" `CoreScriptPackage`s or `BuiltInPlugins`. As of now, we don't really have a clear workaround for this chunk. (It's REQUIRED for loading bytecode directly under TypeId 0x1D, which we'll talk about in just a moment)
+[/list]
+Theres FAR MORE to the format to this in general, but this is really all you need to know for this situation. This vast information is also why we'll be working on our own official documentation of the modern rbxm format in the future, so stay tuned into [url=https://latte.to/invite]our Discord Server[/url] for more!
+
+[size=x-large][b]TypeId "`0x1D`"[/b][/size]
+We managed to discover this unique TypeId due to some official model files Roblox put out for their "`BuiltInPlugins`". It's read almost equivalent to the `String` property-type, except for the fact that it's binary data and not UTF-8. In the disassembled source, it is officially denoted as "`Bytecode`", so we're calling it `BytecodeString` in our pseudo reference!
+In our [i]very[/i] extensive testing, (so much we almost decided to jump off of a bridge) we figured out that bytecode wouldn't directly load in the Player, or RCC (Server), and would return a bad/corrupted file error or similar. This is ultimately due to the `SIGN` chunk Roblox uses internally in the rbxm format.
+I'm only here talking about this in the first place because Roblox Studio doesn't actually totally respect this chunk for the type; right now, that is.. You can directly load Luau VM bytecode in studio under a developer plugin or model, no-matter if it's a local plugin or on the marketplace. :)
+
+With that knowledge, you can directly load and run any Luau VM bytecode instantly under anyone's environment! In-case you didn't know, [url=https://v3rmillion.net/showthread.php?tid=1149589]that's almost like giving full machine-instruction access[/url] lol.
+
+[size=x-large][b]Luau Bytecode & RCE From the VM[/b][/size]
+I'm not [i]the best[/i] when it comes to exploiting the Lua/Luau VM at runtime (modifying instructions directly), but you can use any number of these resources to achieve direct RCE in the Luau Virtual Machine:
+
+- [url=https://gist.github.com/ulidtko/51b8671260db79da64d193e41d7e7d16]Exploiting Lua 5.1 on x86_64[/url] (Still works the same way in [url=https://github.com/Roblox/luau/blob/master/VM/src/lvmexecute.cpp#L394]Luau[/url])
+- [url=https://v3rmillion.net/showthread.php?pid=8114661#pid8114661]Reply From Defcon42 on a Previous Exploit ACE Vulnarability[/url] (Still can reference here)
+- [url=https://www.luac.nl]Lua Bytecode Explorer[/url] (Similar to godbolt, but for Lua. Again, you can use these same concepts with the Luau VM)
+
+[size=x-large][b]Proof of Concept[/b][/size]
+I've provided a basic proof-of-concept for this in the [url=https://github.com/latte-soft/0x1D/tree/master/bytecode-poc/build]`src/build`[/url] directory, which when placed in your Studio `Plugins` folder and a game is loaded, will run directly under the Luau Bytecode Format V3. (Currently in Studio at the time of writing)
+
+Since I'm LAZY (lol) I used [url=https://rojo.space]Rojo[/url] to generate an RBXM with a script containing Luau bytecode, then editing the file in a hex editor afterward and changing the `TypeId` for `Script.Source` from 0x01 to 0x1D. Again, It's just meant to be a very basic proof of concept showing the direct loading of Luau bytecode from an rbxm.
+
+[size=x-large][b]Conclusion[/b][/size]
+After gatekeeping this for a little over 2 months successfully without anyone else directly figuring out about this issue, we've decided to release a basic form of the method after Roblox has decided to add a change to how they handle this.
+
+We will be releasing our own RBXM format implementation w/ DOM, which will also include further documentation on the format in the near future. Make sure to join [url=https://latte.to]our Discord Server[/url] to stay tuned!
+
+[size=x-large][b]Credits[/b][/size][/color]
+- Reggie - [url=https://github.com/regginator]GitHub[/url] | [url=https://v3rmillion.net/member.php?action=profile&uid=1763716]V3rm[/url]
+- LuaPhysics - [url=https://github.com/LuaPhysics]GitHub[/url] | [url=https://v3rmillion.net/member.php?action=profile&uid=1149709]V3rm[/url]
