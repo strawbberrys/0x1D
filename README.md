@@ -55,6 +55,11 @@ Roblox Studio Remote Code Execution (RCE) Vulnerability | By [Latte Softworks](h
 
 ___
 
+## General TLDR
+This vulnerability allows the ability for any Roblox Studio plugin (Locally or on the marketplace) to gain direct machine access and achieve "RCE", where one can get a reverse shell or execute a Remote Access Trojan (RAT) program on your machine.
+
+___
+
 ## Introduction
 <sup><i>Documents & code snippets are licensed under the MIT License, see LICENSE.txt for more information.</i>
 <br />
