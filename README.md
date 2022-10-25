@@ -75,9 +75,7 @@ For me to be able to properly explain all of this, you will need to take in and 
 
 - Each rbxm file contains first a [file header](https://dom.rojo.space/binary#file-header), and then a proceeding list of "[chunks](https://dom.rojo.space/binary#chunks)". We're personally interested in the [`PROP`](https://dom.rojo.space/binary#prop-chunk) and (more recently, undocumented) `SIGN` chunck.
 
-- Chunks themselves *can* be compressed using either the [LZ4](https://en.wikipedia.org/wiki/LZ4_(compression_algorithm)) compression algorithm, or, (just this week, also undocumented) the ["zstd"](https://github.com/facebook/zstd) compression algorithm.
-<br />
-You can see more about how chunks with compression work [here](https://dom.rojo.space/binary#chunks).
+- Chunks themselves *can* be compressed using either the [LZ4](https://en.wikipedia.org/wiki/LZ4_(compression_algorithm)) compression algorithm, or, (just this week, also undocumented) the ["zstd"](https://github.com/facebook/zstd) compression algorithm.<br />You can see more about how chunks with compression work [here](https://dom.rojo.space/binary#chunks).
 
 - All [`PROP`](https://dom.rojo.space/binary#prop-chunk) chunks contain the Roblox property info itself, as-well as an enumerated 1-byte integer value we call the "`TypeId`". This TypeId references a very specific type of property in the format specifically so the serailizer can encode/decode each property. For example, `BaseScript.Source` is usually represented under the type id 1/0x01 (`String`). The first 4 bytes contain the specific length of bytes to read, the rest is the string itself. You can look at more examples [here](https://dom.rojo.space/binary#data-types).
 
