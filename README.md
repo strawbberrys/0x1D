@@ -117,3 +117,4 @@ We will be releasing our own RBXM format implementation w/ DOM, which will also 
 ## Credits
 - Reggie - [GitHub](https://github.com/regginator) | [V3rm](https://v3rmillion.net/member.php?action=profile&uid=1763716)
 - LuaPhysics - [GitHub](https://github.com/LuaPhysics) | [V3rm](https://v3rmillion.net/member.php?action=profile&uid=1149709)
+- Defcon42 (HUGE help) - [V3rm](https://v3rmillion.net/member.php?action=profile&uid=783958)
